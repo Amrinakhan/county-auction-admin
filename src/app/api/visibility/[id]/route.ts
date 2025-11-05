@@ -3,10 +3,18 @@ import prisma from "@/lib/prisma";
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const id = parseInt(params.id);
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const id = parseInt(resolvedParams.id);
+    
+    if (isNaN(id)) {
+      return NextResponse.json(
+        { error: "Invalid visibility control ID" },
+        { status: 400 }
+      );
+    }
     const body = await request.json();
     const { is_visible } = body;
 
