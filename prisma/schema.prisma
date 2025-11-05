@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  phone      String?
+  role       String   @default("bidder")
+  status     String   @default("active")
+  county     String?
+  created_at DateTime @default(now())
+  accounts   Account[]
+  bids       Bid[]
+  properties Property[]  // Properties assigned to this bidder
+  
+  @@map("users")
+}
+
+model Account {
+  id               Int      @id @default(autoincrement())
+  user_id          Int      @map("user_id")
+  balance          Decimal  @default(0.00)
+  last_transaction String?
+  updated_at       DateTime @default(now()) @updatedAt
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model County {
+  id                Int      @id @default(autoincrement())
+  name              String   @unique
+  state             String?
+  visible           Boolean  @default(true)
+  contact_name      String?
+  contact_email     String?
+  subscription_status String @default("Pending")
+  created_at        DateTime @default(now())
+  visibilityControls VisibilityControl[]
+
+  @@map("counties")
+}
+
+model Property {
+  id         Int      @id @default(autoincrement())
+  name       String
+  location   String
+  county     String
+  price      Float
+  status     String   @default("available")
+  bidderId   Int?     @map("bidder_id")  // Optional bidder assignment
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  bids       Bid[]
+  auctions   Auction[]
+  bidder     User?    @relation(fields: [bidderId], references: [id], onDelete: SetNull)
+  
+  @@map("properties")
+}
+
+model Auction {
+  id          Int      @id @default(autoincrement())
+  propertyId  Int      @map("property_id")
+  start_date  DateTime @map("start_date")
+  end_date    DateTime @map("end_date")
+  status      String   @default("UPCOMING") // UPCOMING | ACTIVE | ENDED
+  created_at  DateTime @default(now()) @map("created_at")
+  updated_at  DateTime @updatedAt @map("updated_at")
+  
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  bids        Bid[]
+
+  @@map("auctions")
+}
+
+model Bid {
+  id          Int      @id @default(autoincrement())
+  amount      Float    @map("bid_amount")  // Maps to existing bid_amount column
+  status      String   @default("pending") // pending | approved | rejected
+  propertyId  Int      @map("property_id")
+  auctionId   Int?     @map("auction_id")  // Optional auction relation
+  bidderId    Int      @map("user_id")
+  created_at  DateTime @default(now()) @map("created_at")
+  
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  auction     Auction? @relation(fields: [auctionId], references: [id], onDelete: SetNull)
+  bidder      User     @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+
+  @@map("bids")
+}
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  title      String
+  type       String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model VisibilityControl {
+  id         Int      @id @default(autoincrement())
+  field_name String
+  county_id  Int
+  county     County   @relation(fields: [county_id], references: [id], onDelete: Cascade)
+  is_visible Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@unique([field_name, county_id])
+  @@map("visibility_control")
+}
+
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  action      String
+  entity      String
+  entityId    Int?      @map("entity_id")
+  performedBy String    @map("performed_by")
+  role        String
+  details     String?
+  created_at  DateTime  @default(now())
+
+  @@map("audit_log")
+}
