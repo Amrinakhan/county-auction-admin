@@ -13,6 +13,29 @@ async function ensureDefaultAdmin() {
   });
 
   if (existing) {
+    const passwordMatches = await bcrypt.compare(
+      DEFAULT_ADMIN_PASSWORD,
+      existing.password
+    );
+
+    if (!passwordMatches) {
+      const updated = await prisma.userLogin.update({
+        where: { id: existing.id },
+        data: {
+          password: await bcrypt.hash(DEFAULT_ADMIN_PASSWORD, 10),
+          name: DEFAULT_ADMIN_NAME,
+        },
+      });
+      return updated;
+    }
+
+    if (existing.name !== DEFAULT_ADMIN_NAME) {
+      return prisma.userLogin.update({
+        where: { id: existing.id },
+        data: { name: DEFAULT_ADMIN_NAME },
+      });
+    }
+
     return existing;
   }
 
