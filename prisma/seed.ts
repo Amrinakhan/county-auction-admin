@@ -16,9 +16,27 @@ async function main() {
   // Create properties
   await prisma.property.createMany({
     data: [
-      { title: "County House", county: "Hudson", status: "open" },
-      { title: "Farm Land", county: "Essex", status: "closed" },
-      { title: "Commercial Building", county: "Bergen", status: "open" },
+      {
+        name: "County House",
+        location: "Hudson, NJ",
+        county: "Hudson",
+        price: 450000,
+        status: "available",
+      },
+      {
+        name: "Farm Land",
+        location: "Essex, NJ",
+        county: "Essex",
+        price: 320000,
+        status: "available",
+      },
+      {
+        name: "Commercial Building",
+        location: "Bergen, NJ",
+        county: "Bergen",
+        price: 875000,
+        status: "available",
+      },
     ],
     skipDuplicates: true,
   });
@@ -31,21 +49,21 @@ async function main() {
     await prisma.bid.createMany({
       data: [
         {
-          user_id: users[0].id,
-          item_name: properties[0].title,
-          bid_amount: 50000.00,
+          bidderId: users[0].id,
+          propertyId: properties[0].id,
+          amount: 50000,
           status: "pending",
         },
         {
-          user_id: users[1].id,
-          item_name: properties[1].title,
-          bid_amount: 75000.00,
+          bidderId: users[1].id,
+          propertyId: properties[1].id,
+          amount: 75000,
           status: "pending",
         },
         {
-          user_id: users[2]?.id || users[0].id,
-          item_name: properties[0].title,
-          bid_amount: 60000.00,
+          bidderId: users[2]?.id || users[0].id,
+          propertyId: properties[0].id,
+          amount: 60000,
           status: "pending",
         },
       ],
