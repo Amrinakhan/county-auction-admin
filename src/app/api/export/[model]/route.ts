@@ -29,11 +29,10 @@ export async function GET(
         data = await prisma.property.findMany({
           select: {
             id: true,
-            map_id: true,
-            sale_id: true,
-            title: true,
-            owner: true,
-            address: true,
+            name: true,
+            location: true,
+            county: true,
+            price: true,
             status: true,
             created_at: true,
           },
