@@ -1,8 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const adminPasswordHash = await bcrypt.hash("admin123", 10);
+
   // Create users
   await prisma.user.createMany({
     data: [
@@ -70,6 +73,19 @@ async function main() {
       skipDuplicates: true,
     });
   }
+
+  await prisma.userLogin.upsert({
+    where: { email: "admin123@gmail.com" },
+    update: {
+      name: "Admin",
+      password: adminPasswordHash,
+    },
+    create: {
+      name: "Admin",
+      email: "admin123@gmail.com",
+      password: adminPasswordHash,
+    },
+  });
 
   console.log("Seed data created successfully!");
 }

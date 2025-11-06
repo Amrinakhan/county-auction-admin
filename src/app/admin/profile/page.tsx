@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,33 +16,118 @@ import {
 } from "@/components/ui/dialog";
 import { User, Mail, Shield, MapPin, Phone, Edit, Save, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [adminData, setAdminData] = useState({
-    name: "Admin User",
-    email: "admin@countyauction.com",
+    name: "Admin",
+    email: "admin123@gmail.com",
     role: "Administrator",
     county: "Hudson County",
     phone: "+1 (555) 123-4567",
   });
 
   const [editForm, setEditForm] = useState(adminData);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!response.ok) {
+          if (response.status === 401) {
+            router.replace("/login");
+            return;
+          }
+          throw new Error("Failed to fetch profile");
+        }
+
+        const data = await response.json();
+        if (isMounted && data?.user) {
+          setAdminData((prev) => ({
+            ...prev,
+            name: data.user.name ?? prev.name,
+            email: data.user.email ?? prev.email,
+          }));
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        console.error("Error loading profile", message);
+        toast({
+          title: "Unable to load profile",
+          description: message,
+          variant: "error",
+        });
+      } finally {
+        if (isMounted) {
+          setIsLoadingProfile(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router, toast]);
+
+  useEffect(() => {
+    setEditForm(adminData);
+  }, [adminData]);
 
   const handleEdit = () => {
     setEditForm(adminData);
     setIsEditing(true);
   };
 
-  const handleSave = () => {
-    setAdminData(editForm);
-    setIsEditing(false);
-    // Here you would normally call an API to save the changes
-    if ((window as any).toast) {
-      (window as any).toast({
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editForm.name,
+          email: editForm.email,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const message = typeof result?.error === "string" ? result.error : "Failed to update profile";
+        throw new Error(message);
+      }
+
+      setAdminData((prev) => ({
+        ...prev,
+        name: result.user.name,
+        email: result.user.email,
+      }));
+      setIsEditing(false);
+      router.refresh();
+      toast({
         title: "Profile updated successfully",
         variant: "success",
       });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Please try again";
+      toast({
+        title: "Update failed",
+        description: message,
+        variant: "error",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -58,7 +144,7 @@ export default function AdminProfilePage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Admin Profile</h1>
-        <Button onClick={handleEdit} variant="outline">
+        <Button onClick={handleEdit} variant="outline" disabled={isLoadingProfile}>
           <Edit className="h-4 w-4 mr-2" />
           Edit Profile
         </Button>
@@ -253,9 +339,9 @@ export default function AdminProfilePage() {
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isSaving}>
               <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              {isSaving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

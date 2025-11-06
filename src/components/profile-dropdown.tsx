@@ -1,6 +1,8 @@
 "use client";
 
-import { User, Mail, Shield, MapPin, LogOut, Settings } from "lucide-react";
+import useSWR from "swr";
+import { useMemo } from "react";
+import { User, Shield, MapPin, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,16 +15,31 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// Mock admin data - in production, fetch from API or context
-const adminData = {
-  name: "Admin User",
-  email: "admin@countyauction.com",
-  role: "SuperAdmin",
-  county: "Hudson County",
-};
-
 export function ProfileDropdown() {
   const router = useRouter();
+  const { data } = useSWR<{ user?: { name: string; email: string } }>(
+    "/api/auth/me",
+    async (url) => {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    {
+      shouldRetryOnError: false,
+      revalidateOnFocus: false,
+    }
+  );
+
+  const user = data?.user;
+  const displayName = user?.name ?? "Administrator";
+  const displayEmail = user?.email ?? "admin@example.com";
+  const initial = useMemo(() => displayName.charAt(0).toUpperCase(), [displayName]);
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  };
 
   return (
     <DropdownMenu>
@@ -36,11 +53,11 @@ export function ProfileDropdown() {
           <div className="flex flex-col space-y-1">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-                {adminData.name.charAt(0).toUpperCase()}
+                {initial}
               </div>
               <div className="flex flex-col">
-                <p className="text-sm font-medium leading-none">{adminData.name}</p>
-                <p className="text-xs text-muted-foreground mt-1">{adminData.email}</p>
+                <p className="text-sm font-medium leading-none">{displayName}</p>
+                <p className="text-xs text-muted-foreground mt-1">{displayEmail}</p>
               </div>
             </div>
           </div>
@@ -49,11 +66,11 @@ export function ProfileDropdown() {
         <div className="px-2 py-1.5 space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Shield className="h-4 w-4" />
-            <span>{adminData.role}</span>
+            <span>Administrator</span>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
-            <span>{adminData.county}</span>
+            <span>County Auction</span>
           </div>
         </div>
         <DropdownMenuSeparator />
@@ -72,10 +89,7 @@ export function ProfileDropdown() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer text-red-600 focus:text-red-600"
-          onClick={() => {
-            // In production, handle logout properly
-            router.push("/login");
-          }}
+          onClick={handleLogout}
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>

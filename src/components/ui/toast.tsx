@@ -3,6 +3,7 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ToastOptions } from "@/hooks/use-toast";
 
 interface ToastProps {
   id: string;
@@ -64,31 +65,37 @@ export function Toast({ id, title, description, variant = "default", onClose }: 
   );
 }
 
-export function Toaster() {
-  const [toasts, setToasts] = React.useState<Array<{
-    id: string;
-    title: string;
-    description?: string;
-    variant?: "default" | "success" | "error";
-  }>>([]);
+type StoredToast = Omit<ToastProps, "onClose">;
 
-  const addToast = React.useCallback((toast: {
-    title: string;
-    description?: string;
-    variant?: "default" | "success" | "error";
-  }) => {
-    const id = Math.random().toString(36).substring(7);
-    setToasts((prev) => [...prev, { ...toast, id }]);
-  }, []);
+let toastCounter = 0;
+
+function generateToastId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  toastCounter += 1;
+  return `toast-${Date.now()}-${toastCounter}`;
+}
+
+export function Toaster() {
+  const [toasts, setToasts] = React.useState<StoredToast[]>([]);
+
+  const addToast = React.useCallback(
+    (toast: Omit<ToastOptions, "variant"> & { variant?: "default" | "success" | "error" }) => {
+      const id = generateToastId();
+      setToasts((prev) => [...prev, { ...toast, id }]);
+    },
+    []
+  );
 
   const removeToast = React.useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   React.useEffect(() => {
-    (window as any).toast = addToast;
+    window.toast = addToast;
     return () => {
-      delete (window as any).toast;
+      delete window.toast;
     };
   }, [addToast]);
 
