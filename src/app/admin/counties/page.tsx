@@ -46,7 +46,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 const countySchema = z.object({
   name: z.string().min(1, "County name is required"),
   state: z.string().optional(),
-  visible: z.boolean().default(true),
+  visible: z.boolean(),
 });
 
 type CountyFormData = z.infer<typeof countySchema>;
@@ -77,6 +77,8 @@ export default function CountiesPage() {
   } = useForm<CountyFormData>({
     resolver: zodResolver(countySchema),
     defaultValues: {
+      name: "",
+      state: "",
       visible: true,
     },
   });
@@ -96,7 +98,7 @@ export default function CountiesPage() {
           (window as any).toast({ title: "County created successfully", variant: "success" });
         }
       }
-      await mutate("/api/counties");
+      await mutate();
       setIsModalOpen(false);
       reset();
       setEditingCounty(null);
@@ -125,7 +127,7 @@ export default function CountiesPage() {
     if (!deleteId) return;
     try {
       await axios.delete(`/api/counties/${deleteId}`);
-      await mutate("/api/counties");
+      await mutate();
       setDeleteId(null);
       if ((window as any).toast) {
         (window as any).toast({ title: "County deleted successfully", variant: "success" });
@@ -143,7 +145,7 @@ export default function CountiesPage() {
       await axios.patch(`/api/counties/${county.id}`, {
         visible: !county.visible,
       });
-      await mutate("/api/counties");
+      await mutate();
       if ((window as any).toast) {
         (window as any).toast({
           title: "Visibility Updated",
